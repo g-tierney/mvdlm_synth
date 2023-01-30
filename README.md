@@ -6,7 +6,7 @@ MVDLM Causal Forecasting
 
 This document will run the Causal Forecasting MVDLM model on simulated
 data similar to the proprietary data in Tierney et al. (2023) paper
-“Multivariate {B}ayesian Dynamic Modeling for Causal Prediction.” The
+“Multivariate Bayesian Dynamic Modeling for Causal Prediction.” The
 MVDLM is implemented in python and run via the `reticulate` R package.
 This code extends that used in Emily Tallman’s implementation
 [here](https://github.com/emtall/MVDLM). Python 3.9 is required to
@@ -149,7 +149,7 @@ bma_probs %>%
   labs(x="Time until Treatment",y = NULL)
 ```
 
-![](example_application_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
 Next, we show the posterior mean for $\Theta_T$ and harmonic mean for
 $\Sigma_T$ at the end of the pre-intervention period (when the model is
@@ -231,7 +231,7 @@ weekly_results %>%
   facet_wrap(~store)
 ```
 
-![](example_application_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
 Next, we compute the store-level percent lift over the post-intervention
 period.
@@ -255,7 +255,7 @@ store_results %>%
   labs(x = "Treatment Store",y = "Percent Lift")
 ```
 
-![](example_application_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
 And finally, we show the average percent lift across stores using either
 our model of a Multivariate DLM or the results of fitting independent
@@ -295,4 +295,4 @@ bind_rows(agg_results,agg_results_indep) %>%
   labs(x = "Model Type",y = "Average Percent Lift")
 ```
 
-![](example_application_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
