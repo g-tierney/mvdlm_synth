@@ -6,3 +6,4 @@
 data/*
 *pycache*
 .DS_store
+example_application_files/*
