@@ -1,35 +1,27 @@
----
-title: "MVDLM Causal Forecasting"
-output: github_document
-date: "2023-01-29"
-editor_options: 
-  chunk_output_type: console
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE,message = FALSE,warning = FALSE,eval=TRUE)
-library(tidyverse)
-library(reticulate)
-
-library(kableExtra)
-
-reticulate::use_virtualenv("py3.9")
-
-theme_set(theme_bw() + 
-            theme(legend.position = "bottom",
-                  plot.title = element_text(hjust = .5)))
-
-```
+MVDLM Causal Forecasting
+================
+2023-01-29
 
 # Introduction
 
-This document will run the Causal Forecasting MVDLM model on simulated data similar to the proprietary data in Tierney et al. (2023) paper "Multivariate Bayesian Dynamic Modeling for Causal Prediction." The MVDLM is implemented in python and run via the `reticulate` R package. This code extends that used in Emily Tallman's implementation [here](https://github.com/emtall/MVDLM). Python 3.9 is required to simulate from multivariate $t$ distributions. 
+This document will run the Causal Forecasting MVDLM model on simulated
+data similar to the proprietary data in Tierney et al. (2023) paper
+“Multivariate {B}ayesian Dynamic Modeling for Causal Prediction.” The
+MVDLM is implemented in python and run via the `reticulate` R package.
+This code extends that used in Emily Tallman’s implementation
+[here](https://github.com/emtall/MVDLM). Python 3.9 is required to
+simulate from multivariate $t$ distributions.
 
 # Simulate Data
 
-The code below shows the simulated data process. We simulate 3 treated series with positive and negative correlations. We also simulate 6 control series, only the first four of which are relevant to the treated series. We fit two models, one which excludes the irrelevant series and one that includes them to verify that the BMA procedure will correctly identify the optimal model. 
+The code below shows the simulated data process. We simulate 3 treated
+series with positive and negative correlations. We also simulate 6
+control series, only the first four of which are relevant to the treated
+series. We fit two models, one which excludes the irrelevant series and
+one that includes them to verify that the BMA procedure will correctly
+identify the optimal model.
 
-```{r}
+``` r
 n_pre <- 52
 n_post <- 16
 n_total <- n_pre + n_post
@@ -92,10 +84,10 @@ write_csv(Y %>% as_tibble() %>% rename_with(~str_c("T",1:3)),
 
 # Causal Forecasting
 
-Next, we show how to call the main workhorse function `mv_synth` to run the analysis. 
+Next, we show how to call the main workhorse function `mv_synth` to run
+the analysis.
 
-```{r}
-
+``` r
 '
 import sys
 sys.path.append("mvdlm")
@@ -122,14 +114,23 @@ mv_samples = mv_synth(Y,X_correct,T=52,n_mc=2000)
 py_run_string(py_code)
 ```
 
-The resulting object `mv_samples` is a list of three items. The first is an array of samples from the posterior with dimensions (number of post-intervention time points) x (number of treated units) x (number of MC samples). The second is the mvdlm object, which contains the final and sequence of parameter estimates. The third is the sequence of one-step predictive log-likelihoods for each pre-intervention time point. The next section shows how to use each of these features. 
+The resulting object `mv_samples` is a list of three items. The first is
+an array of samples from the posterior with dimensions (number of
+post-intervention time points) x (number of treated units) x (number of
+MC samples). The second is the mvdlm object, which contains the final
+and sequence of parameter estimates. The third is the sequence of
+one-step predictive log-likelihoods for each pre-intervention time
+point. The next section shows how to use each of these features.
 
 # Analyze results
 
-First, we do model comparison based on BMA weights for the correctly specified model (excluding the last two predictors) and the full model (including the two irrelevant predictors). The BMA weights quickly identify the correct model. All subsequent analysis will focus only on this model. 
+First, we do model comparison based on BMA weights for the correctly
+specified model (excluding the last two predictors) and the full model
+(including the two irrelevant predictors). The BMA weights quickly
+identify the correct model. All subsequent analysis will focus only on
+this model.
 
-```{r}
-
+``` r
 bma_probs <- tibble(t=1:n_pre,mfull_onestep = py$mv_samples_full[[3]],mtrue_onestep = py$mv_samples[[3]]) %>% 
   mutate(mfull_lcum = cumsum(mfull_onestep),
          mtrue_lcum = cumsum(mtrue_onestep),
@@ -146,25 +147,60 @@ bma_probs %>%
   geom_line() + 
   facet_wrap(~ quantity,scales = "free_y",nrow = 2) + 
   labs(x="Time until Treatment",y = NULL)
-
 ```
 
-Next, we show the posterior mean for $\Theta_T$ and harmonic mean for $\Sigma_T$ at the end of the pre-intervention period (when the model is frozen) and compare them to the true values.  
+![](example_application_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
-```{r}
+Next, we show the posterior mean for $\Theta_T$ and harmonic mean for
+$\Sigma_T$ at the end of the pre-intervention period (when the model is
+frozen) and compare them to the true values.
 
+``` r
 #Compare estimated and true Theta
 py$mv_samples[[2]]$M
-rbind(matrix(99:101,nrow=1),Theta[1:4,])
+```
 
+    ##             [,1]        [,2]         [,3]
+    ## [1,] 99.10706797 99.76799847 100.87275701
+    ## [2,]  0.88232152 -0.28157453   1.09528665
+    ## [3,] -0.54680874  0.38828616  -0.59332995
+    ## [4,]  0.02282678  0.01249907  -0.01499091
+    ## [5,]  0.41657447 -0.13917360  -0.99933094
+
+``` r
+rbind(matrix(99:101,nrow=1),Theta[1:4,])
+```
+
+    ##            [,1]        [,2]         [,3]
+    ## [1,] 99.0000000 100.0000000 101.00000000
+    ## [2,]  0.8324354  -0.2933437   0.82853780
+    ## [3,] -0.4027239   0.3023125  -0.41013297
+    ## [4,]  0.0000000   0.0000000  -0.03756678
+    ## [5,]  0.3767421  -0.1450099  -1.01582975
+
+``` r
 #Compare estimated and true Sigma
 Sigma
+```
+
+    ##      [,1] [,2] [,3]
+    ## [1,]  1.0  0.4  0.3
+    ## [2,]  0.4  1.0 -0.2
+    ## [3,]  0.3 -0.2  1.0
+
+``` r
 py$mv_samples[[2]]$D/py$mv_samples[[2]]$n
 ```
 
-Now we analyze the actual posterior samples. First we plot the observed (dashed) and counterfactual forecast (solid) for each treatment store.
+    ##           [,1]       [,2]       [,3]
+    ## [1,] 0.8834864  0.5560247  0.1133924
+    ## [2,] 0.5560247  1.2495542 -0.3268920
+    ## [3,] 0.1133924 -0.3268920  1.1772993
 
-```{r}
+Now we analyze the actual posterior samples. First we plot the observed
+(dashed) and counterfactual forecast (solid) for each treatment store.
+
+``` r
 samples <- py$mv_samples[[1]] 
 #examine time-varying effects
 weekly_results <- tibble()
@@ -195,9 +231,12 @@ weekly_results %>%
   facet_wrap(~store)
 ```
 
-Next, we compute the store-level percent lift over the post-intervention period. 
+![](example_application_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
-```{r}
+Next, we compute the store-level percent lift over the post-intervention
+period.
+
+``` r
 store_results <- samples %>% 
   apply(c(2,3),sum) %>% 
   apply(2, function(s) (colSums(Y[(n_pre+1):n_total,]) - s)/s) %>% 
@@ -214,12 +253,18 @@ store_results %>%
   geom_hline(yintercept = 0) + 
   scale_y_continuous(labels = scales::label_percent()) + 
   labs(x = "Treatment Store",y = "Percent Lift")
-
 ```
 
-And finally, we show the average percent lift across stores using either our model of a Multivariate DLM or the results of fitting independent DLMS by randomly shuffling the store-specific effects across Monte Carlo draws before averaging. As expected, the multivariate methods give wider credible intervals, reflecting the correlated uncertainty regarding counter-factual outcomes. 
+![](example_application_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
-```{r}
+And finally, we show the average percent lift across stores using either
+our model of a Multivariate DLM or the results of fitting independent
+DLMS by randomly shuffling the store-specific effects across Monte Carlo
+draws before averaging. As expected, the multivariate methods give wider
+credible intervals, reflecting the correlated uncertainty regarding
+counter-factual outcomes.
+
+``` r
 agg_results <- samples %>% 
   apply(c(2,3),sum) %>% 
   apply(2, function(s) (colSums(Y[(n_pre+1):n_total,]) - s)/s) %>% 
@@ -249,3 +294,5 @@ bind_rows(agg_results,agg_results_indep) %>%
   scale_y_continuous(labels = scales::label_percent()) + 
   labs(x = "Model Type",y = "Average Percent Lift")
 ```
+
+![](example_application_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
