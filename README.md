@@ -1,6 +1,7 @@
 MVDLM Causal Forecasting
 ================
-2023-01-29
+Graham Tierney
+30 January, 2023
 
 # Introduction
 
@@ -19,7 +20,9 @@ series with positive and negative correlations. We also simulate 6
 control series, only the first four of which are relevant to the treated
 series. We fit two models, one which excludes the irrelevant series and
 one that includes them to verify that the BMA procedure will correctly
-identify the optimal model.
+identify the optimal model. The treatment effect is a constant and
+additive 2 unit upward shift. Baseline levels are about 100 units, so
+the effect is approximately the same in percentage terms.
 
 ``` r
 n_pre <- 52
@@ -53,6 +56,7 @@ Theta <- rnorm(n_control*n_treat)/sqrt(3) %>%
   matrix(nrow=n_control,ncol = n_treat) 
 Theta[5:6,] <- 0 #final two have no impact
 Theta[3,1:2] <- 0
+intercepts <- c(99,100,101)
 
 #constant Sigma
 Sigma <- diag(1,nrow=n_treat,ncol=n_treat)
@@ -66,7 +70,7 @@ Y1 <- matrix(NA,nrow = n_total,ncol = n_treat)
 
 for(t in 1:n_total){
   Y0[t,] = Y1[t,] <- (as.matrix(control_outcomes[t,],nrow=1) %*% Theta) + 
-    c(99:101) + 
+    intercepts + 
     mvtnorm::rmvnorm(1,rep(0,n_treat),Sigma)
   if(t>n_pre){
     Y1[t,] <- Y1[t,] + tau
@@ -85,7 +89,9 @@ write_csv(Y %>% as_tibble() %>% rename_with(~str_c("T",1:3)),
 # Causal Forecasting
 
 Next, we show how to call the main workhorse function `mv_synth` to run
-the analysis.
+the analysis. The main class is implemented in `mvdlm/mvdlm.py`. The
+`mv_synth` function automates much of the analysis process by automating
+prior construction and getting the relevant forecast results.
 
 ``` r
 '
@@ -168,7 +174,7 @@ py$mv_samples[[2]]$M
     ## [5,]  0.41657447 -0.13917360  -0.99933094
 
 ``` r
-rbind(matrix(99:101,nrow=1),Theta[1:4,])
+rbind(matrix(intercepts,nrow=1),Theta[1:4,])
 ```
 
     ##            [,1]        [,2]         [,3]
