@@ -84,6 +84,7 @@ for(t in 1:n_total){
 #observed Y
 Y <- rbind(Y0[1:n_pre,],Y1[(n_pre+1):n_total,])
 
+if(!dir.exists("data")) dir.create("data")
 write_csv(control_outcomes,"data/sim_control_outcomes.csv")
 write_csv(Y %>% as_tibble() %>% rename_with(~str_c("T",1:3)),
           "data/sim_treatment_outcomes.csv")
